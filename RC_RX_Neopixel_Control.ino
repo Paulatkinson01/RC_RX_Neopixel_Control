@@ -1,14 +1,9 @@
 #include <Adafruit_NeoPixel.h>
-#define PIXEL_PIN 6                 // Pin connected to pixels
-#define PIXEL_COUNT 16              // Number of Pixels
-const int numReadings = 10;
+#define PIN 6                       // Pin connected to pixels
 int rxIn = 7;                       // Use a 10K pullup resistor
-int readings[numReadings];          // the readings from the analog input
-int readIndex = 0;                  // the index of the current reading
-int total = 0;                      // the running total
-int average = 0;
 unsigned long duration;
-Adafruit_NeoPixel strip = Adafruit_NeoPixel(PIXEL_COUNT, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
+int pos = 0, dir = 1;
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(30, PIN, NEO_GRB + NEO_KHZ800);
 
 
 void setup()
@@ -17,9 +12,6 @@ void setup()
   strip.show();
   pinMode(rxIn, INPUT);
   Serial.begin(9600);
-  for (int thisReading = 0; thisReading < numReadings; thisReading++) {
-    readings[thisReading] = 0;
-  }
 }
 
 
@@ -28,54 +20,41 @@ void setup()
 void loop()
 {
 
-  total = total - readings[readIndex];
-  readings[readIndex] = pulseIn(rxIn, HIGH);
-  total = total + readings[readIndex];
-  readIndex = readIndex + 1;
+  duration = pulseIn(rxIn, HIGH);
+  Serial.println(duration);
   
-  if (readIndex >= numReadings) {    
-    readIndex = 0;
-  }
-
-  average = total / numReadings;
-  Serial.println(average);
-
-  //duration = pulseIn(rxIn, HIGH);
-  
-  if(average < 1100){ // PWM lower than 1100 use this mode, else the function that matches below.
+  if(duration < 1100){ // PWM lower than 1100 use this mode, else the function that matches below.
     colorWipe(strip.Color(255, 0, 0), 50); // Red
     colorWipe(strip.Color(0, 255, 0), 50); // Green
     colorWipe(strip.Color(0, 0, 255), 50); // Blue
     Serial.println("colorWipe");
   }
   else
-  if(average > 1100 && average < 1300)
+  if(duration > 1100 && duration < 1300)
   {
     rainbow(20);
     Serial.println("rainbow");
   }
   else
-  if(average > 1300 && average < 1500)
+  if(duration > 1300 && duration < 1500)
   {
     rainbowCycle(20);
     Serial.println("rainbowCycle");
   }
   else
-  if(average > 1500 && average < 1700)
+  if(duration > 1500 && duration < 1700)
   {
     theaterChaseRainbow(50);
     Serial.println("theaterChaseRainbow");
   }
   else
-  if(average > 1700)
+  if(duration > 1700)
   {
     theaterChase(strip.Color(127, 127, 127), 50); // White
     theaterChase(strip.Color(127,   0,   0), 50); // Red
     theaterChase(strip.Color(  0,   0, 127), 50); // Blue
     Serial.println("Function 5");
   }
-  
-  delay(400);
  
 }
 
@@ -164,5 +143,32 @@ uint32_t Wheel(byte WheelPos) {
   } else {
    WheelPos -= 170;
    return strip.Color(WheelPos * 3, 255 - WheelPos * 3, 0);
+  }
+}
+
+void Larson() {
+  int j;
+
+  strip.setPixelColor(pos - 2, 0x100000); // Dark red
+  strip.setPixelColor(pos - 1, 0x800000); // Medium red
+  strip.setPixelColor(pos    , 0xFF3000); // Center pixel is brightest
+  strip.setPixelColor(pos + 1, 0x800000); // Medium red
+  strip.setPixelColor(pos + 2, 0x100000); // Dark red
+
+  strip.show();
+  delay(30);
+
+  // Rather than being sneaky and erasing just the tail pixel,
+  // it's easier to erase it all and draw a new one next time.
+  for(j=-2; j<= 2; j++) strip.setPixelColor(pos+j, 0);
+
+  // Bounce off ends of strip
+  pos += dir;
+  if(pos < 0) {
+    pos = 1;
+    dir = -dir;
+  } else if(pos >= strip.numPixels()) {
+    pos = strip.numPixels() - 2;
+    dir = -dir;
   }
 }
